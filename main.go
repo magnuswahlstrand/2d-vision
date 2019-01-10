@@ -114,10 +114,6 @@ var debug bool
 
 func update(screen *ebiten.Image) error {
 
-	if ebiten.IsDrawingSkipped() {
-		return nil
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return errors.New("Game terminated by player")
 	}
@@ -140,12 +136,16 @@ func update(screen *ebiten.Image) error {
 		y += 2
 	}
 
+	if ebiten.IsDrawingSkipped() {
+		return nil
+	}
+
 	screen.Fill(color.RGBA{255, 0, 0, 255})
 	drawFloor(screen)
 
 	lines := []segment{}
 
-	sparser := 4.
+	sparser := 2.
 	for i := 0.; i < (360 / sparser); i++ {
 		length := float64(screenWidth + screenHeight)
 
