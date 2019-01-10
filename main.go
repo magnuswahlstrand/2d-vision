@@ -157,7 +157,7 @@ func update(screen *ebiten.Image) error {
 		// Check intersection with all walls
 
 		points := []*geo.Point{}
-		for _, r := range []image.Rectangle{game, box, box2} {
+		for _, r := range []image.Rectangle{game, box, box2, box3} {
 			path := geoPathFromRect(r)
 			tmp, _ := path.Intersection(line)
 			points = append(points, tmp...)
@@ -190,10 +190,6 @@ func update(screen *ebiten.Image) error {
 	opt.Address = ebiten.AddressRepeat
 	opt.CompositeMode = ebiten.CompositeModeSourceOut
 
-	for _, wall := range walls {
-		ebitenutil.DrawLine(screen, float64(wall.X1), float64(wall.Y1), float64(wall.X2), float64(wall.Y2), colorRed)
-	}
-
 	prevLine := lines[len(lines)-1]
 	for _, line := range lines {
 		// Ray lines
@@ -213,10 +209,27 @@ func update(screen *ebiten.Image) error {
 	op.ColorM.Scale(1, 1, 1, 0.8) // Make transparent
 	screen.DrawImage(blackImage, op)
 
+	for _, wall := range walls {
+		ebitenutil.DrawLine(screen, float64(wall.X1), float64(wall.Y1), float64(wall.X2), float64(wall.Y2), colorRed)
+	}
+
 	// Center marker
 	drawMarker(screen, x, y, colorRed)
 
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.0f, (%.0f,%0.0f)", ebiten.CurrentTPS(), x, y))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf(`
+
+      WASD: Move
+      Q: Toggle rays
+
+
+
+
+
+
+
+
+              TPS: %0.0f
+`, ebiten.CurrentTPS()))
 	return nil
 }
 
@@ -259,6 +272,7 @@ func drawMarker(screen *ebiten.Image, x, y float64, c color.Color) {
 var game image.Rectangle
 var box image.Rectangle
 var box2 image.Rectangle
+var box3 image.Rectangle
 
 func main() {
 	padd := 10
@@ -271,13 +285,14 @@ func main() {
 	// walls = append(walls, Seg(screenWidth-padd, screenWidth-padd, screenWidth-padd, padd))
 	// walls = append(walls, Seg(screenWidth-padd, padd, padd, padd))
 
-	//
-
 	box = image.Rect(0, 0, 100, 100).Add(image.Pt(30, 30))
 	walls = append(walls, segmentsFromRect(box)...)
 
-	box2 = image.Rect(0, 0, 30, 30).Add(image.Pt(230, 150))
+	box2 = image.Rect(0, 0, 30, 30).Add(image.Pt(230, 200))
 	walls = append(walls, segmentsFromRect(box2)...)
+
+	box3 = image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
+	walls = append(walls, segmentsFromRect(box3)...)
 
 	if err := ebiten.Run(update, screenWidth, screenHeight, 2, "2D Raycasting Demo"); err != nil {
 		log.Fatal("Game exited: ", err)
