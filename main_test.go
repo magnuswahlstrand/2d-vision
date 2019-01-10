@@ -42,7 +42,6 @@ func Test_IntersectRect(t *testing.T) {
 	if path.Intersects(line) {
 		// intersection will return the actual points and places on intersection
 		points, segments := path.Intersection(line)
-
 		for i, _ := range points {
 			log.Printf("Intersection %d at %v with path segment %d", i, points[i], segments[i][0])
 		}

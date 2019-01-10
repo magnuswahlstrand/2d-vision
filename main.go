@@ -193,7 +193,7 @@ func update(screen *ebiten.Image) error {
 
 	lines := []segment{}
 
-	sparser := 2.
+	sparser := 4.
 	for i := 0.; i < (360 / sparser); i++ {
 		length := float64(screenWidth + screenHeight)
 
@@ -267,7 +267,7 @@ func update(screen *ebiten.Image) error {
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf(`
 
-      WASD: Move
+      WASD/Drag: Move
       Q: Toggle rays
 
 
@@ -329,10 +329,6 @@ func main() {
 
 	game = image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
 	walls = append(walls, segmentsFromRect(game)...)
-	// walls = append(walls, Seg(padd, padd, padd, screenWidth-padd))
-	// walls = append(walls, Seg(padd, screenWidth-padd, screenWidth-padd, screenWidth-padd))
-	// walls = append(walls, Seg(screenWidth-padd, screenWidth-padd, screenWidth-padd, padd))
-	// walls = append(walls, Seg(screenWidth-padd, padd, padd, padd))
 
 	box = image.Rect(0, 0, 100, 100).Add(image.Pt(30, 30))
 	walls = append(walls, segmentsFromRect(box)...)
@@ -343,7 +339,7 @@ func main() {
 	box3 = image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
 	walls = append(walls, segmentsFromRect(box3)...)
 
-	if err := ebiten.Run(update, screenWidth, screenHeight, 2, "2D Raycasting Demo"); err != nil {
+	if err := ebiten.Run(update, screenWidth, screenHeight, 1.5, "2D Raycasting Demo"); err != nil {
 		log.Fatal("Game exited: ", err)
 
 	}
