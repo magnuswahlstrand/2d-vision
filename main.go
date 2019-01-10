@@ -111,8 +111,56 @@ var (
 )
 
 var debug bool
+var dragging bool
+var draggingType string
+
+const size = 10
 
 func update(screen *ebiten.Image) error {
+	var dragX, dragY int
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		cx, cy := ebiten.CursorPosition()
+		if (float64(cx)-x)*(float64(cx)-x) < size*size && (float64(cy)-y)*(float64(cy)-y) < size*size {
+			fmt.Println("Start dragg")
+			dragging = true
+			draggingType = "mouse"
+		}
+	}
+
+	if len(inpututil.JustPressedTouchIDs()) > 0 {
+		cx, cy := ebiten.TouchPosition(0)
+		if (float64(cx)-x)*(float64(cx)-x) < size*size && (float64(cy)-y)*(float64(cy)-y) < size*size {
+			fmt.Println("Start dragg")
+			dragging = true
+			draggingType = "touch"
+		}
+	}
+
+	if inpututil.IsTouchJustReleased(0) {
+		dragging = false
+		draggingType = ""
+	}
+
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && draggingType == "mouse" {
+		dragging = false
+		draggingType = ""
+	}
+
+	if dragging {
+
+		switch draggingType {
+		case "mouse":
+			dragX, dragY = ebiten.CursorPosition()
+		case "touch":
+			dragX, dragY = ebiten.TouchPosition(0)
+		}
+		fmt.Println(draggingType)
+
+		x, y = float64(dragX), float64(dragY)
+	}
+
+	cx, cy := ebiten.CursorPosition()
+	fmt.Println(cx, cy)
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return errors.New("Game terminated by player")
@@ -123,17 +171,17 @@ func update(screen *ebiten.Image) error {
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
-		x += 2
+		x += 4
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
-		x -= 2
+		x -= 4
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
-		y -= 2
+		y -= 4
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
-		y += 2
+		y += 4
 	}
 
 	if ebiten.IsDrawingSkipped() {
@@ -177,7 +225,7 @@ func update(screen *ebiten.Image) error {
 			}
 
 			if debug {
-				drawMarker(screen, points[i].X(), points[i].Y(), colorRed)
+				drawMarker(screen, points[i].X(), points[i].Y(), colorRed, 1)
 			}
 		}
 
@@ -197,7 +245,7 @@ func update(screen *ebiten.Image) error {
 		if debug {
 			ebitenutil.DrawLine(screen, line.X1, line.Y1, line.X2, line.Y2, colorYellow)
 			// Markers at intersection
-			drawMarker(screen, line.X2, line.Y2, colorYellow)
+			drawMarker(screen, line.X2, line.Y2, colorYellow, 1)
 
 		}
 
@@ -215,7 +263,7 @@ func update(screen *ebiten.Image) error {
 	}
 
 	// Center marker
-	drawMarker(screen, x, y, colorRed)
+	drawMarker(screen, x, y, colorYellow, 10)
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf(`
 
@@ -263,11 +311,11 @@ func geoPathFromRect(r image.Rectangle) *geo.Path {
 	return path
 }
 
-func drawMarker(screen *ebiten.Image, x, y float64, c color.Color) {
-	ebitenutil.DrawLine(screen, x-1, y-1, x-1, y+1, c)
-	ebitenutil.DrawLine(screen, x-1, y+1, x+1, y+1, c)
-	ebitenutil.DrawLine(screen, x+1, y+1, x+1, y-1, c)
-	ebitenutil.DrawLine(screen, x+1, y-1, x-1, y-1, c)
+func drawMarker(screen *ebiten.Image, x, y float64, c color.Color, r float64) {
+	ebitenutil.DrawLine(screen, x-r, y-r, x-r, y+r, c)
+	ebitenutil.DrawLine(screen, x-r, y+r, x+r, y+r, c)
+	ebitenutil.DrawLine(screen, x+r, y+r, x+r, y-r, c)
+	ebitenutil.DrawLine(screen, x+r, y-r, x-r, y-r, c)
 }
 
 var game image.Rectangle
