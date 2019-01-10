@@ -113,14 +113,13 @@ var debug bool
 var dragging bool
 var draggingType string
 
-const size = 10
+const size = 6
 
 func update(screen *ebiten.Image) error {
 	var dragX, dragY int
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cx, cy := ebiten.CursorPosition()
 		if (float64(cx)-x)*(float64(cx)-x) < size*size && (float64(cy)-y)*(float64(cy)-y) < size*size {
-			fmt.Println("Start dragg")
 			dragging = true
 			draggingType = "mouse"
 		}
@@ -153,13 +152,12 @@ func update(screen *ebiten.Image) error {
 		case "touch":
 			dragX, dragY = ebiten.TouchPosition(0)
 		}
-		fmt.Println(draggingType)
 
 		x, y = float64(dragX), float64(dragY)
 	}
 
-	cx, cy := ebiten.CursorPosition()
-	fmt.Println(cx, cy)
+	// cx, cy := ebiten.CursorPosition()
+	// fmt.Println(cx, cy)
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return errors.New("Game terminated by player")
@@ -190,7 +188,8 @@ func update(screen *ebiten.Image) error {
 	screen.Fill(color.RGBA{255, 0, 0, 255})
 	drawFloor(screen)
 
-	lines := internal.BasicRayCasting(x, y, []image.Rectangle{outer, box, box2, box3})
+	// lines := internal.BasicRayCasting(x, y, []image.Rectangle{outer, box, box2, box3})
+	lines := internal.SmartRayCasting(x, y, objects)
 
 	blackImage.Fill(color.Black)
 	op := &ebiten.DrawImageOptions{}
@@ -201,18 +200,19 @@ func update(screen *ebiten.Image) error {
 
 	prevLine := lines[len(lines)-1]
 	for _, line := range lines {
-		// Ray lines
-		if debug {
-			ebitenutil.DrawLine(screen, line.X1, line.Y1, line.X2, line.Y2, colorYellow)
-			// Markers at intersection
-			internal.DrawMarker(screen, line.X2, line.Y2, colorYellow, 1)
-
-		}
 
 		// Area between lines
 		t2 := T(x, y, prevLine.X2, prevLine.Y2, line.X2, line.Y2)
 		blackImage.DrawTriangles(t2.Vertices(), []uint16{0, 1, 2}, maskedFgImage, opt)
 		prevLine = line
+
+		// Ray lines
+		if debug {
+			ebitenutil.DrawLine(screen, line.X1, line.Y1, line.X2, line.Y2, colorYellow)
+			ebitenutil.DrawLine(screen, prevLine.X1, prevLine.Y1, prevLine.X2, prevLine.Y2, colorYellow)
+			// Markers at intersection
+			internal.DrawMarker(screen, line.X2, line.Y2, colorYellow, 1)
+		}
 	}
 
 	op.ColorM.Scale(1, 1, 1, 0.8) // Make transparent
@@ -223,33 +223,38 @@ func update(screen *ebiten.Image) error {
 	}
 
 	// Center marker
-	internal.DrawMarker(screen, x, y, colorYellow, 10)
-	internal.DrawInstructions(screen)
+	internal.DrawMarker(screen, x, y, colorYellow, size)
+	internal.DrawInstructions(screen, len(lines), debug)
 	return nil
 }
 
 var walls []internal.Segment
 
-var outer image.Rectangle
-var box image.Rectangle
-var box2 image.Rectangle
-var box3 image.Rectangle
+var objects = []image.Rectangle{}
 
 func main() {
 	padd := 10
 	walls = []internal.Segment{}
 
-	outer = image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
+	outer := image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
 	walls = append(walls, internal.SegmentsFromRect(outer)...)
+	objects = append(objects, outer)
 
-	box = image.Rect(0, 0, 100, 100).Add(image.Pt(30, 30))
+	box := image.Rect(0, 0, 110, 110).Add(image.Pt(30, 30))
 	walls = append(walls, internal.SegmentsFromRect(box)...)
+	objects = append(objects, box)
 
-	box2 = image.Rect(0, 0, 30, 30).Add(image.Pt(230, 200))
+	box2 := image.Rect(0, 0, 30, 30).Add(image.Pt(230, 200))
 	walls = append(walls, internal.SegmentsFromRect(box2)...)
+	objects = append(objects, box2)
 
-	box3 = image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
+	box3 := image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
 	walls = append(walls, internal.SegmentsFromRect(box3)...)
+	objects = append(objects, box3)
+
+	box4 := image.Rect(0, 0, 100, 30).Add(image.Pt(165, 30))
+	walls = append(walls, internal.SegmentsFromRect(box4)...)
+	objects = append(objects, box4)
 
 	if err := ebiten.Run(update, screenWidth, screenHeight, 1.5, "2D Raycasting Demo"); err != nil {
 		log.Fatal("Game exited: ", err)

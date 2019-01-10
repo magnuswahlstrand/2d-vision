@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"log"
+	"math"
 	"testing"
 
+	"github.com/kyeett/2d-vision/internal"
 	geo "github.com/paulmach/go.geo"
 )
 
@@ -32,7 +35,7 @@ func Test_IntersectRect(t *testing.T) {
 	// path.Push(geo.NewPoint(1, 1))
 
 	r := image.Rect(0, 0, 1, 1)
-	path := geoPathFromRect(r)
+	path := internal.GeoPathFromRect(r)
 
 	// geo.NewBoundFromPoints(r.Min, r.Max)
 
@@ -46,4 +49,15 @@ func Test_IntersectRect(t *testing.T) {
 			log.Printf("Intersection %d at %v with path segment %d", i, points[i], segments[i][0])
 		}
 	}
+}
+
+func Test_Direction(t *testing.T) {
+	// path := geo.NewPath()
+	// path.Push(geo.NewPoint(0, 0))
+	// path.Push(geo.NewPoint(1, 1))
+
+	for _, s := range []internal.Segment{internal.Seg(0, 0, -1, -1), internal.Seg(0, 0, 1, 1), internal.Seg(0, 0, 0, 1)} {
+		fmt.Println(180 * s.Direction() / math.Pi)
+	}
+	t.Fail()
 }
