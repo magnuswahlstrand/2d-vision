@@ -7,10 +7,9 @@ import (
 	"image"
 	"image/color"
 	"log"
-	"math"
 
+	"github.com/kyeett/2d-vision/internal"
 	"github.com/kyeett/2d-vision/resources"
-	geo "github.com/paulmach/go.geo"
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
@@ -191,46 +190,7 @@ func update(screen *ebiten.Image) error {
 	screen.Fill(color.RGBA{255, 0, 0, 255})
 	drawFloor(screen)
 
-	lines := []segment{}
-
-	sparser := 4.
-	for i := 0.; i < (360 / sparser); i++ {
-		length := float64(screenWidth + screenHeight)
-
-		angle := sparser * math.Pi * i / 180
-		start := geo.NewPoint(x, y)
-		end := geo.NewPoint(x, y).Add(geo.NewPoint(length*math.Cos(angle), length*math.Sin(angle)))
-
-		line := geo.NewLine(start, end)
-
-		// Check intersection with all walls
-
-		points := []*geo.Point{}
-		for _, r := range []image.Rectangle{game, box, box2, box3} {
-			path := geoPathFromRect(r)
-			tmp, _ := path.Intersection(line)
-			points = append(points, tmp...)
-		}
-
-		// Find closest point
-		min := math.Inf(1)
-		minP := &geo.Point{}
-		for i, _ := range points {
-
-			d := points[i].DistanceFrom(geo.NewPoint(x, y))
-
-			if d < min {
-				min = d
-				minP = points[i]
-			}
-
-			if debug {
-				drawMarker(screen, points[i].X(), points[i].Y(), colorRed, 1)
-			}
-		}
-
-		lines = append(lines, Seg(x, y, minP.X(), minP.Y()))
-	}
+	lines := internal.BasicRayCasting(x, y, []image.Rectangle{outer, box, box2, box3})
 
 	blackImage.Fill(color.Black)
 	op := &ebiten.DrawImageOptions{}
@@ -245,7 +205,7 @@ func update(screen *ebiten.Image) error {
 		if debug {
 			ebitenutil.DrawLine(screen, line.X1, line.Y1, line.X2, line.Y2, colorYellow)
 			// Markers at intersection
-			drawMarker(screen, line.X2, line.Y2, colorYellow, 1)
+			internal.DrawMarker(screen, line.X2, line.Y2, colorYellow, 1)
 
 		}
 
@@ -263,81 +223,33 @@ func update(screen *ebiten.Image) error {
 	}
 
 	// Center marker
-	drawMarker(screen, x, y, colorYellow, 10)
-
-	ebitenutil.DebugPrint(screen, fmt.Sprintf(`
-
-      WASD/Drag: Move
-      Q: Toggle rays
-
-
-
-
-
-
-
-
-              TPS: %0.0f
-`, ebiten.CurrentTPS()))
+	internal.DrawMarker(screen, x, y, colorYellow, 10)
+	internal.DrawInstructions(screen)
 	return nil
 }
 
-type segment struct {
-	X1, Y1, X2, Y2 float64
-}
+var walls []internal.Segment
 
-func Seg(x1, y1, x2, y2 float64) segment {
-	return segment{x1, y1, x2, y2}
-}
-
-var walls []segment
-
-func segmentsFromRect(r image.Rectangle) []segment {
-	s := []segment{}
-	s = append(s, Seg(float64(r.Min.X), float64(r.Min.Y), float64(r.Min.X), float64(r.Max.Y)))
-	s = append(s, Seg(float64(r.Min.X), float64(r.Max.Y), float64(r.Max.X), float64(r.Max.Y)))
-	s = append(s, Seg(float64(r.Max.X), float64(r.Max.Y), float64(r.Max.X), float64(r.Min.Y)))
-	s = append(s, Seg(float64(r.Max.X), float64(r.Min.Y), float64(r.Min.X), float64(r.Min.Y)))
-	return s
-}
-
-func geoPathFromRect(r image.Rectangle) *geo.Path {
-	path := geo.NewPath()
-	path.Push(geo.NewPoint(float64(r.Min.X), float64(r.Min.Y)))
-	path.Push(geo.NewPoint(float64(r.Max.X), float64(r.Min.Y)))
-	path.Push(geo.NewPoint(float64(r.Max.X), float64(r.Max.Y)))
-	path.Push(geo.NewPoint(float64(r.Min.X), float64(r.Max.Y)))
-	path.Push(geo.NewPoint(float64(r.Min.X), float64(r.Min.Y)))
-	return path
-}
-
-func drawMarker(screen *ebiten.Image, x, y float64, c color.Color, r float64) {
-	ebitenutil.DrawLine(screen, x-r, y-r, x-r, y+r, c)
-	ebitenutil.DrawLine(screen, x-r, y+r, x+r, y+r, c)
-	ebitenutil.DrawLine(screen, x+r, y+r, x+r, y-r, c)
-	ebitenutil.DrawLine(screen, x+r, y-r, x-r, y-r, c)
-}
-
-var game image.Rectangle
+var outer image.Rectangle
 var box image.Rectangle
 var box2 image.Rectangle
 var box3 image.Rectangle
 
 func main() {
 	padd := 10
-	walls = []segment{}
+	walls = []internal.Segment{}
 
-	game = image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
-	walls = append(walls, segmentsFromRect(game)...)
+	outer = image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
+	walls = append(walls, internal.SegmentsFromRect(outer)...)
 
 	box = image.Rect(0, 0, 100, 100).Add(image.Pt(30, 30))
-	walls = append(walls, segmentsFromRect(box)...)
+	walls = append(walls, internal.SegmentsFromRect(box)...)
 
 	box2 = image.Rect(0, 0, 30, 30).Add(image.Pt(230, 200))
-	walls = append(walls, segmentsFromRect(box2)...)
+	walls = append(walls, internal.SegmentsFromRect(box2)...)
 
 	box3 = image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
-	walls = append(walls, segmentsFromRect(box3)...)
+	walls = append(walls, internal.SegmentsFromRect(box3)...)
 
 	if err := ebiten.Run(update, screenWidth, screenHeight, 1.5, "2D Raycasting Demo"); err != nil {
 		log.Fatal("Game exited: ", err)
