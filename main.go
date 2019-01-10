@@ -145,7 +145,7 @@ func update(screen *ebiten.Image) error {
 
 	lines := []segment{}
 
-	sparser := 2.
+	sparser := 4.
 	for i := 0.; i < (360 / sparser); i++ {
 		length := float64(screenWidth + screenHeight)
 
