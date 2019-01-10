@@ -1,14 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"log"
 	"math"
-	"os"
 
+	"github.com/kyeett/2d-vision/resources"
 	geo "github.com/paulmach/go.geo"
 
 	"github.com/hajimehoshi/ebiten"
@@ -27,13 +28,13 @@ const (
 
 func init() {
 
-	f, err := os.Open("resources/floor.png")
-	if err != nil {
-		log.Fatal("failed to open file", err)
-	}
-	defer f.Close()
+	// f, err := os.Open("resources/floor.png")
+	// if err != nil {
+	// 	log.Fatal("failed to open file", err)
+	// }
+	// defer f.Close()
 
-	img, _, err := image.Decode(f)
+	img, _, err := image.Decode(bytes.NewReader(resources.Floor_png))
 	if err != nil {
 		log.Fatal("failed to decode image", err)
 	}
