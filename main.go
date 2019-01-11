@@ -8,6 +8,9 @@ import (
 	"image/color"
 	"log"
 
+	"golang.org/x/image/colornames"
+
+	"github.com/SolarLune/resolv/resolv"
 	"github.com/kyeett/2d-vision/internal"
 	"github.com/kyeett/2d-vision/resources"
 
@@ -113,9 +116,9 @@ var debug bool
 var dragging bool
 var draggingType string
 
-const size = 6
+const size = 8
 
-func update(screen *ebiten.Image) error {
+func (g *Game) update(screen *ebiten.Image) error {
 	var dragX, dragY int
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cx, cy := ebiten.CursorPosition()
@@ -144,8 +147,8 @@ func update(screen *ebiten.Image) error {
 		draggingType = ""
 	}
 
+	var tmpX, tmpY float64
 	if dragging {
-
 		switch draggingType {
 		case "mouse":
 			dragX, dragY = ebiten.CursorPosition()
@@ -153,7 +156,37 @@ func update(screen *ebiten.Image) error {
 			dragX, dragY = ebiten.TouchPosition(0)
 		}
 
-		x, y = float64(dragX), float64(dragY)
+		r := g.space.Get(0).(*resolv.Rectangle)
+		vX, vY := int32(dragX-int(x)), int32(dragY-int(y))
+		if vX > 8 {
+			vX = 8
+		}
+
+		if vX < -8 {
+			vX = -8
+		}
+
+		if vY > 8 {
+			vY = 8
+		}
+
+		if vY < -8 {
+			vY = -8
+		}
+
+		if res := g.space.Resolve(r, vX, 0); res.Colliding() && !res.Teleporting {
+			fmt.Println("Collide!")
+		} else {
+			r.Move(vX, 0)
+			x += float64(vX)
+		}
+
+		if res := g.space.Resolve(r, 0, vY); res.Colliding() && !res.Teleporting {
+			fmt.Println("Collide!")
+		} else {
+			r.Move(0, vY)
+			y += float64(vY)
+		}
 	}
 
 	// cx, cy := ebiten.CursorPosition()
@@ -167,19 +200,47 @@ func update(screen *ebiten.Image) error {
 		debug = !debug
 	}
 
+	var vx, vy float64
 	if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
-		x += 4
+		vx = 4
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
-		x -= 4
+		vx = -4
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
-		y -= 4
+		vy = -4
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
-		y += 4
+		vy = 4
 	}
+
+	fmt.Println(tmpX, tmpY)
+
+	// player := resolv.NewRectangle(int32(x-size), int32(y-size), int32(size*2), int32(size*2))
+	r := g.space.Get(0).(*resolv.Rectangle)
+	if res := g.space.Resolve(r, int32(vx), 0); res.Colliding() && !res.Teleporting {
+		fmt.Println("Collide!")
+	} else {
+		x += vx
+		r.Move(int32(vx), 0)
+	}
+
+	if res := g.space.Resolve(r, 0, int32(vy)); res.Colliding() && !res.Teleporting {
+		fmt.Println("Collide!")
+	} else {
+		y += vy
+		r.Move(0, int32(vy))
+	}
+
+	// p := g.space.Get(0)
+	// p.SetXY(int32(x-size), int32(y-size))
+	fmt.Println(g.space.Get(0), int32(vx), int32(vy))
+	// if res := g.space.Resolve(r, 0, vy); res.Colliding() && !res.Teleporting {
+	// 	overrideColor = colornames.Red
+	// } else {
+	// 	y += vy
+	// }
 
 	if ebiten.IsDrawingSkipped() {
 		return nil
@@ -189,7 +250,7 @@ func update(screen *ebiten.Image) error {
 	drawFloor(screen)
 
 	// lines := internal.BasicRayCasting(x, y, []image.Rectangle{outer, box, box2, box3})
-	lines := internal.SmartRayCasting(x, y, objects)
+	lines := internal.SmartRayCasting(x, y, g.objects)
 
 	blackImage.Fill(color.Black)
 	op := &ebiten.DrawImageOptions{}
@@ -215,11 +276,15 @@ func update(screen *ebiten.Image) error {
 		}
 	}
 
-	op.ColorM.Scale(1, 1, 1, 0.8) // Make transparent
+	op.ColorM.Scale(1, 1, 1, 0.7) // Make transparent
 	screen.DrawImage(blackImage, op)
 
-	for _, wall := range walls {
-		ebitenutil.DrawLine(screen, float64(wall.X1), float64(wall.Y1), float64(wall.X2), float64(wall.Y2), colorRed)
+	for _, wall := range g.walls {
+		ebitenutil.DrawLine(screen, float64(wall.X1), float64(wall.Y1), float64(wall.X2), float64(wall.Y2), colornames.Darkred)
+	}
+
+	for _, o := range g.objects[1:] {
+		drawRect(screen, int32(o.Min.X), int32(o.Min.Y), int32(o.Dx()), int32(o.Dy()), color.RGBA{0, 0, 0, 150})
 	}
 
 	// Center marker
@@ -228,35 +293,52 @@ func update(screen *ebiten.Image) error {
 	return nil
 }
 
-var walls []internal.Segment
+func drawRect(screen *ebiten.Image, x, y, w, h int32, c color.Color) {
+	ebitenutil.DrawRect(screen, float64(x), float64(y), float64(w), float64(h), c)
+}
 
-var objects = []image.Rectangle{}
+type Game struct {
+	walls   []internal.Segment
+	objects []image.Rectangle
+	space   resolv.Space
+}
 
 func main() {
+
+	g := Game{}
+
 	padd := 10
-	walls = []internal.Segment{}
+	g.walls = []internal.Segment{}
 
 	outer := image.Rect(0, 0, screenWidth-2*padd, screenWidth-2*padd).Add(image.Pt(padd, padd))
-	walls = append(walls, internal.SegmentsFromRect(outer)...)
-	objects = append(objects, outer)
+	g.walls = append(g.walls, internal.SegmentsFromRect(outer)...)
+	g.objects = append(g.objects, outer)
 
 	box := image.Rect(0, 0, 110, 110).Add(image.Pt(30, 30))
-	walls = append(walls, internal.SegmentsFromRect(box)...)
-	objects = append(objects, box)
+	g.walls = append(g.walls, internal.SegmentsFromRect(box)...)
+	g.objects = append(g.objects, box)
 
 	box2 := image.Rect(0, 0, 30, 30).Add(image.Pt(230, 200))
-	walls = append(walls, internal.SegmentsFromRect(box2)...)
-	objects = append(objects, box2)
+	g.walls = append(g.walls, internal.SegmentsFromRect(box2)...)
+	g.objects = append(g.objects, box2)
 
 	box3 := image.Rect(0, 0, 70, 70).Add(image.Pt(80, 180))
-	walls = append(walls, internal.SegmentsFromRect(box3)...)
-	objects = append(objects, box3)
+	g.walls = append(g.walls, internal.SegmentsFromRect(box3)...)
+	g.objects = append(g.objects, box3)
 
 	box4 := image.Rect(0, 0, 100, 30).Add(image.Pt(165, 30))
-	walls = append(walls, internal.SegmentsFromRect(box4)...)
-	objects = append(objects, box4)
+	g.walls = append(g.walls, internal.SegmentsFromRect(box4)...)
+	g.objects = append(g.objects, box4)
 
-	if err := ebiten.Run(update, screenWidth, screenHeight, 1.5, "2D Raycasting Demo"); err != nil {
+	g.space.AddShape(
+		resolv.NewRectangle(int32(x-size), int32(y-size), int32(size*2), int32(size*2)),
+		internal.ShapeFromRect(box),
+		internal.ShapeFromRect(box2),
+		internal.ShapeFromRect(box3),
+		internal.ShapeFromRect(box4))
+	g.space.AddShape(internal.LinesFromRect(outer)...)
+
+	if err := ebiten.Run(g.update, screenWidth, screenHeight, 1.5, "2D Raycasting Demo"); err != nil {
 		log.Fatal("Game exited: ", err)
 
 	}

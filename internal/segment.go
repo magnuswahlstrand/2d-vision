@@ -3,6 +3,7 @@ package internal
 import (
 	"image"
 
+	"github.com/SolarLune/resolv/resolv"
 	geo "github.com/paulmach/go.geo"
 )
 
@@ -27,4 +28,18 @@ func SegmentsFromRect(r image.Rectangle) []Segment {
 	s = append(s, Seg(float64(r.Max.X), float64(r.Max.Y), float64(r.Max.X), float64(r.Min.Y)))
 	s = append(s, Seg(float64(r.Max.X), float64(r.Min.Y), float64(r.Min.X), float64(r.Min.Y)))
 	return s
+}
+
+func LinesFromRect(r image.Rectangle) []resolv.Shape {
+	return []resolv.Shape{
+		resolv.NewLine(int32(r.Min.X), int32(r.Min.Y), int32(r.Min.X), int32(r.Max.Y)),
+		resolv.NewLine(int32(r.Min.X), int32(r.Max.Y), int32(r.Max.X), int32(r.Max.Y)),
+		resolv.NewLine(int32(r.Max.X), int32(r.Max.Y), int32(r.Max.X), int32(r.Min.Y)),
+		resolv.NewLine(int32(r.Max.X), int32(r.Min.Y), int32(r.Min.X), int32(r.Min.Y)),
+	}
+}
+
+func ShapeFromRect(r image.Rectangle) resolv.Shape {
+	r2 := resolv.NewRectangle(int32(r.Min.X), int32(r.Min.Y), int32(r.Dx()), int32(r.Dy()))
+	return r2
 }

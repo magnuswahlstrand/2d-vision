@@ -22,7 +22,7 @@ Calculate the angles to the corners of all objects, and do the ray cast only in 
 
 **Note**: At first, I had a lot of problems with the rays stopping ON the corners. I solved this by sending _two_ lines per corner, with a small offset to the angle in both directions. It works well, but doubles the number of lines. I'm not sure if this is the right approach.
 
-[Demo here](https://pkg.jsgo.io/github.com/kyeett/2d-vision.c62ef4d28cc90c6ee0aa8239ca38031bfa170bd7.js)
+[Demo here](https://pkg.jsgo.io/github.com/kyeett/2d-vision.d8191d356f9071af5257232958d62af24c6760bf.js)
 
 ![Smart Ray Casting](/doc/smart_ray_casting.gif)
 
